@@ -10,7 +10,6 @@
 #define INF 99999
 
 void print_matrix(int* mat, int n) {
-
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < n; j++)
 			printf("%d ", mat[i * n + j]);
@@ -70,12 +69,12 @@ void floyd_seq(int* graphe, int n) {
 }
 
 char* load_kernel(const char* filename) {
-	/**/FILE* fp;
+	FILE* fp;
 	char* source;
 	int sz = 0;
 	struct stat status;
 
-	fp = fopen(filename, "r");
+	fp = fopen(filename, "rb");
 	if (fp == 0) {
 		printf("Echec\n");
 		return 0;
@@ -91,6 +90,28 @@ char* load_kernel(const char* filename) {
 	return source;
 }
 
+void getError(cl_int status, cl_program program, cl_device_id* devices, int line) {
+	if (status) {
+		printf("ligne %d, ERREUR A LA COMPILATION: %d\n", line, status);
+		size_t log_size;
+		switch (status)
+		{
+		case -11:
+			clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+			char* log = (char*)malloc(log_size);
+			clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+			printf("%s\n", log);
+			break;
+		case -36:
+			printf("CL_INVALID_COMMAND_QUEUE: command_queue is not a valid command-queue.\n");
+			break;
+		default:
+			break;
+		}
+		printf("\n");
+	}
+}
+
 int main() {
 	int n = 4;
 	//printf("entrez la valeur de n: ");
@@ -99,7 +120,8 @@ int main() {
 	int* graphe = (int*)malloc(sizeof(int) * n * n);
 	int* distances = (int*)malloc(sizeof(int) * n * n);
 	//mat[i,j] => mat[i*n + j]
-	init_graphe(graphe, n);
+	init2(graphe, n);
+	floyd_seq(graphe, n);
 
 	char* programSource = load_kernel("kernel.cl");
 
@@ -162,7 +184,7 @@ int main() {
 	fflush(stdout);
 	cl_command_queue cmdQueue;
 
-	cmdQueue = clCreateCommandQueue(context, devices[1], 0, &status);    //tester aussi avec devices[0]
+	cmdQueue = clCreateCommandQueue(context, devices[0], 0, &status);    //tester aussi avec devices[0]
 
 	// STEP 5: Create device buffers
 
@@ -174,8 +196,8 @@ int main() {
 	cl_mem buffer_distances;
 	cl_mem buffer_k;
 
-	buffer_graphe = clCreateBuffer(context, CL_MEM_READ_ONLY, n * n * sizeof(int*), NULL, &status);
-	buffer_n = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int), NULL, &status);
+	buffer_graphe = clCreateBuffer(context, CL_MEM_READ_WRITE, n * n * sizeof(int*), NULL, &status);
+	buffer_n = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int), NULL, &status);
 	buffer_distances = clCreateBuffer(context, CL_MEM_READ_WRITE, n * n * sizeof(int*), NULL, &status);
 	buffer_k = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int), NULL, &status);
 
@@ -195,8 +217,7 @@ int main() {
 	fflush(stdout);
 	status = clBuildProgram(program, numDevices, devices, NULL, NULL, NULL);
 
-	if (status)
-		printf("ERREUR A LA COMPILATION: %d\n", status);
+	getError(status, program, devices, 217);
 
 	// STEP 8: Create the kernel
 
@@ -213,14 +234,22 @@ int main() {
 	int k;
 	for (k = 0; k < n; k++) {
 		status = clEnqueueWriteBuffer(cmdQueue, buffer_graphe, CL_TRUE, 0, n * n * sizeof(int*), graphe, 0, NULL, NULL);
+		getError(status, program, devices, 235);
 		status = clEnqueueWriteBuffer(cmdQueue, buffer_n, CL_TRUE, 0, sizeof(int), &n, 0, NULL, NULL);
+		getError(status, program, devices, 237);
 		status = clEnqueueWriteBuffer(cmdQueue, buffer_distances, CL_TRUE, 0, n * n * sizeof(int*), distances, 0, NULL, NULL);
+		getError(status, program, devices, 239);
 		status = clEnqueueWriteBuffer(cmdQueue, buffer_k, CL_TRUE, 0, sizeof(int), &k, 0, NULL, NULL);
+		getError(status, program, devices, 241);
 
 		status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&buffer_graphe);
-		status = clSetKernelArg(kernel, 1, sizeof(int), (void*)&buffer_n);
+		getError(status, program, devices, 244);
+		status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&buffer_n);
+		getError(status, program, devices, 246);
 		status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&buffer_distances);
-		status = clSetKernelArg(kernel, 3, sizeof(int), (void*)&buffer_k);
+		getError(status, program, devices, 248);
+		status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&buffer_k);
+		getError(status, program, devices, 250);
 
 		printf("Debut des appels\n");
 		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
@@ -228,10 +257,13 @@ int main() {
 		printf("Fin premier appel: status=%d\n", status);
 		clFinish(cmdQueue);  // Pas nécessaire car la pile a été créée "In-order"
 
-		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
-		printf("Fin second appel: status=%d\n", status);
+		status = clEnqueueReadBuffer(cmdQueue, buffer_distances, CL_TRUE, 0, n * n * sizeof(int*), distances, 0, NULL, NULL);
+		getError(status, program, devices, 260);
+		//status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
+		//printf("Fin second appel: status=%d\n", status);
 		clFinish(cmdQueue);
 	}
+
 
 	print_matrix(distances, n);
 	// Free OpenCL resources
@@ -245,12 +277,10 @@ int main() {
 	clReleaseContext(context);
 
 	// Free host resources
-	free(graphe);
-	free(n);
-	free(distances);
-	free(k);
 	free(platforms);
 	free(devices);
+	free(graphe);
+	free(distances);
 
 
 

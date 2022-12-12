@@ -1,7 +1,7 @@
-void kernel floyd(global read_only int* graphe, //matrice adjacence
-    global read_only int* n,   //taille de la matrice
-    global write_only int* distances,  //matrice distance
-    global read_only int* k)   //index
+void kernel floyd(global int* graphe, //matrice adjacence
+    global int* n,   //taille de la matrice
+    global int* distances,  //matrice distance
+    global int* k)   //index
 {
     int op1;
     int op2;
