@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
-#include<math.h>
+#include <math.h>
+#include <time.h>
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
 #else
@@ -30,7 +31,14 @@ void init_graphe(int* graphe, int n) {
 				graphe[i * n + j] = n + 1;
 		}
 	}
-	print_matrix(graphe, n);
+	//print_matrix(graphe, n);
+}
+
+void copy(int* mat1, int* mat2, int n) {
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++)
+			mat2[i * n + j] = mat1[i * n + j];
+	}
 }
 
 void init2(int* graphe, int n) {
@@ -113,15 +121,16 @@ void getError(cl_int status, cl_program program, cl_device_id* devices, int line
 }
 
 int main() {
-	int n = 4;
-	//printf("entrez la valeur de n: ");
-	//scanf("%d", &n);
-	//printf("\n");
+	int n;
+	printf("entrez la valeur de n: ");
+	scanf("%d", &n);
+	printf("\n");
 	int* graphe = (int*)malloc(sizeof(int) * n * n);
 	int* distances = (int*)malloc(sizeof(int) * n * n);
 	//mat[i,j] => mat[i*n + j]
-	init2(graphe, n);
-	floyd_seq(graphe, n);
+	init_graphe(graphe, n);
+	//floyd_seq(graphe, n);
+	copy(graphe, distances, n);
 
 	char* programSource = load_kernel("kernel.cl");
 
@@ -231,6 +240,7 @@ int main() {
 	size_t localWorkSize[3] = { 20,20 };
 
 	// STEP 9: Set the kernel arguments
+	clock_t start = clock();
 	int k;
 	for (k = 0; k < n; k++) {
 		status = clEnqueueWriteBuffer(cmdQueue, buffer_graphe, CL_TRUE, 0, n * n * sizeof(int*), graphe, 0, NULL, NULL);
@@ -251,10 +261,10 @@ int main() {
 		status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&buffer_k);
 		getError(status, program, devices, 250);
 
-		printf("Debut des appels\n");
+		//printf("Debut des appels\n");
 		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 
-		printf("Fin premier appel: status=%d\n", status);
+		//printf("Fin premier appel: status=%d\n", status);
 		clFinish(cmdQueue);  // Pas nécessaire car la pile a été créée "In-order"
 
 		status = clEnqueueReadBuffer(cmdQueue, buffer_distances, CL_TRUE, 0, n * n * sizeof(int*), distances, 0, NULL, NULL);
@@ -263,9 +273,12 @@ int main() {
 		//printf("Fin second appel: status=%d\n", status);
 		clFinish(cmdQueue);
 	}
+	clock_t end = clock();
+	double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
 
 
-	print_matrix(distances, n);
+	//print_matrix(distances, n);
+	printf("temps d'execution : %f sec", time_spent);
 	// Free OpenCL resources
 	clReleaseKernel(kernel);
 	clReleaseProgram(program);
