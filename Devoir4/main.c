@@ -123,10 +123,10 @@ int main() {
 	printf("entrez la valeur de n: ");
 	scanf("%d", &n);
 	printf("\n");
-	int n2 = n * n;
-	int matSize = n2 * sizeof(int*);
-	int* graphe = (int*)calloc(n * n, sizeof(int*));
-	int* distances = (int*)calloc(n * n, sizeof(int*));
+	cl_int n2 = n * n;
+	cl_int matSize = n2 * sizeof(cl_int);
+	cl_int* graphe = calloc(n2, sizeof(cl_int));
+	cl_int* distances = calloc(n2, sizeof(cl_int));
 	if (graphe == NULL)
 		printf("malloc failed\n");
 	//mat[i,j] => mat[i*n + j]
@@ -242,15 +242,15 @@ int main() {
 	size_t localWorkSize[3] = { 64,64 };
 
 	clock_t start = clock();
-	int k;
+	cl_int k;
 	for (k = 0; k < n; k++) {
 		status = clEnqueueWriteBuffer(cmdQueue, buffer_graphe, CL_TRUE, 0, matSize, graphe, 0, NULL, NULL);
 		getError(status, program, devices, 235);
-		status = clEnqueueWriteBuffer(cmdQueue, buffer_n, CL_TRUE, 0, sizeof(int), &n, 0, NULL, NULL);
+		status = clEnqueueWriteBuffer(cmdQueue, buffer_n, CL_TRUE, 0, sizeof(cl_int), &n, 0, NULL, NULL);
 		getError(status, program, devices, 237);
 		status = clEnqueueWriteBuffer(cmdQueue, buffer_distances, CL_TRUE, 0, matSize, distances, 0, NULL, NULL);
 		getError(status, program, devices, 239);
-		status = clEnqueueWriteBuffer(cmdQueue, buffer_k, CL_TRUE, 0, sizeof(int), &k, 0, NULL, NULL);
+		status = clEnqueueWriteBuffer(cmdQueue, buffer_k, CL_TRUE, 0, sizeof(cl_int), &k, 0, NULL, NULL);
 		getError(status, program, devices, 241);
 
 		status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&buffer_graphe);
