@@ -1,4 +1,4 @@
-#include <stdio.h>
+ï»¿#include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <math.h>
@@ -102,15 +102,7 @@ void getError(cl_int status, cl_program program, cl_device_id* devices, int line
 		size_t log_size;
 		switch (status)
 		{
-		case -11:
-			clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
-			char* log = (char*)malloc(log_size);
-			clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
-			printf("%s\n", log);
-			break;
-		case -36:
-			printf("CL_INVALID_COMMAND_QUEUE: command_queue is not a valid command-queue.\n");
-			break;
+		
 		default:
 			break;
 		}
@@ -163,7 +155,7 @@ int main() {
 	cl_uint numDevices = 0;
 	cl_device_id* devices = NULL;
 
-	// calcul du nombre de périphériques
+	// calcul du nombre de pÃ©riphÃ©riques
 	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
 
 
@@ -172,7 +164,7 @@ int main() {
 	// Allocation de l'espace
 	devices = (cl_device_id*)malloc(numDevices * sizeof(cl_device_id));
 
-	// Trouver les périphériques
+	// Trouver les pÃ©riphÃ©riques
 	status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
 
 
@@ -182,7 +174,7 @@ int main() {
 	}
 
 	// STEP 3: Create a context
-	printf("Création du contexte\n");
+	printf("CrÃ©ation du contexte\n");
 	fflush(stdout);
 
 	cl_context context = NULL;
@@ -191,7 +183,7 @@ int main() {
 
 	// STEP 4: Create a command queue
 
-	printf("Création de la file d'attente\n");
+	printf("CrÃ©ation de la file d'attente\n");
 	fflush(stdout);
 	cl_command_queue cmdQueue;
 
@@ -199,7 +191,7 @@ int main() {
 
 	// STEP 5: Create device buffers
 
-	printf("Création des buffers\n");
+	printf("CrÃ©ation des buffers\n");
 	fflush(stdout);
 
 	cl_mem buffer_graphe;
@@ -234,7 +226,7 @@ int main() {
 
 	cl_kernel kernel = NULL;
 
-	printf("Création du kernel\n");
+	printf("CrÃ©ation du kernel\n");
 	fflush(stdout);
 	kernel = clCreateKernel(program, "floyd", &status);
 
@@ -266,7 +258,7 @@ int main() {
 		status = clEnqueueNDRangeKernel(cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 
 		//printf("Fin premier appel: status=%d\n", status);
-		clFinish(cmdQueue);  // Pas nécessaire car la pile a été créée "In-order"
+		clFinish(cmdQueue);  // Pas nÃ©cessaire car la pile a Ã©tÃ© crÃ©Ã©e "In-order"
 
 		status = clEnqueueReadBuffer(cmdQueue, buffer_distances, CL_TRUE, 0, matSize, distances, 0, NULL, NULL);
 		getError(status, program, devices, 260);
